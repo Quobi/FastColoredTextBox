@@ -373,7 +373,8 @@ namespace FastColoredTextBoxNS
         /// </summary>
         /// <param name="descriptionFileName">Name of the description file</param>
         /// <param name="doc">XmlDocument to parse</param>
-        public virtual void AddXmlDescription(string descriptionFileName, XmlDocument doc) {
+        public virtual void AddXmlDescription(string descriptionFileName, XmlDocument doc)
+        {
             SyntaxDescriptor desc = ParseXmlDescription(doc);
             descByXMLfileNames[descriptionFileName] = desc;
         }
@@ -385,7 +386,8 @@ namespace FastColoredTextBoxNS
         /// added afterwards and can be used anyway. 
         /// </summary>
         /// <param name="style">Style to add</param>
-        public virtual void AddResilientStyle(Style style) {
+        public virtual void AddResilientStyle(Style style)
+        {
             if (resilientStyles.Contains(style)) return;
             currentTb.CheckStylesBufferSize(); // Prevent buffer overflow
             resilientStyles.Add(style);
@@ -973,7 +975,7 @@ namespace FastColoredTextBoxNS
                 if (tagName[0] != '/')
                 {
                     // ...push into stack
-                    var tag = new XmlFoldingTag {Name = tagName, id = id++, startLine = r.Start.iLine};
+                    var tag = new XmlFoldingTag { Name = tagName, id = id++, startLine = r.Start.iLine };
                     stack.Push(tag);
                     // if this line has no markers - set marker
                     if (string.IsNullOrEmpty(fctb[iLine].FoldingStartMarker))
@@ -1004,12 +1006,12 @@ namespace FastColoredTextBoxNS
         }
 
         class XmlFoldingTag
-		{
-			public string Name;
-			public int id;
-			public int startLine;
-			public string Marker { get { return Name + id; } }
-		}
+        {
+            public string Name;
+            public int id;
+            public int startLine;
+            public string Marker { get { return Name + id; } }
+        }
 
         protected void InitSQLRegex()
         {

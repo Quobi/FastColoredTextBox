@@ -389,6 +389,12 @@ namespace FastColoredTextBoxNS
         [Description("Enables caret blinking")]
         public bool CaretBlinking { get; set; }
 
+        /// <summary>
+        /// Draw caret when the control is not focused
+        /// </summary>
+        [DefaultValue(false)]
+        public bool ShowCaretWhenInactive { get; set; }
+
 
         Color textAreaBorderColor;
 
@@ -1385,6 +1391,18 @@ namespace FastColoredTextBoxNS
             }
         }
 
+        public int TextLength
+        {
+            get
+            {
+                if (LinesCount == 0)
+                    return 0;
+                var sel = new Range(this);
+                sel.SelectAll();
+                return sel.Length;
+            }
+        }
+
         /// <summary>
         /// Text lines
         /// </summary>
@@ -1454,7 +1472,7 @@ namespace FastColoredTextBoxNS
         [DefaultValue(0)]
         public int SelectionLength
         {
-            get { return Math.Abs(PlaceToPosition(Selection.Start) - PlaceToPosition(Selection.End)); }
+            get { return Selection.Length; }
             set
             {
                 if (value > 0)
@@ -2014,7 +2032,7 @@ namespace FastColoredTextBoxNS
             TextSource.CurrentTB = this;
         }
 
-        protected void InitTextSource(TextSource ts)
+        protected virtual void InitTextSource(TextSource ts)
         {
             if (lines != null)
             {
@@ -2072,7 +2090,10 @@ namespace FastColoredTextBoxNS
             if (e.iFromLine == e.iToLine && !WordWrap && lines.Count > minLinesForAccuracy)
                 RecalcScrollByOneLine(e.iFromLine);
             else
-                needRecalc = true;
+            {
+                NeedRecalc(false, WordWrap);
+                //needRecalc = true;
+            }
         }
 
         /// <summary>
@@ -2542,7 +2563,15 @@ namespace FastColoredTextBoxNS
             }
             else
             {
-                Copy();
+                //copy
+                var data = new DataObject();
+                OnCreateClipboardData(data);
+                //
+                var thread = new Thread(() => SetClipboard(data));
+                thread.SetApartmentState(ApartmentState.STA);
+                thread.Start();
+                thread.Join();
+
                 //remove current line
                 if (Selection.Start.iLine >= 0 && Selection.Start.iLine < LinesCount)
                 {
@@ -2740,6 +2769,31 @@ namespace FastColoredTextBoxNS
             range = range.GetIntersectionWith(Range);
             //set style for range
             range.SetStyle(style);
+
+            return range;
+        }
+
+        /// <summary>
+        /// Insert text into replaceRange and restore previous selection
+        /// </summary>
+        public virtual Range InsertTextAndRestoreSelection(Range replaceRange, string text, Style style)
+        {
+            if (text == null)
+                return null;
+
+            var oldStart = PlaceToPosition(Selection.Start);
+            var oldEnd = PlaceToPosition(Selection.End);
+            var count = replaceRange.Text.Length;
+            var pos = PlaceToPosition(replaceRange.Start);
+            //
+            Selection.BeginUpdate();
+            Selection = replaceRange;
+            var range = InsertText(text, style);
+            //
+            count = range.Text.Length - count;
+            Selection.Start = PositionToPlace(oldStart + (oldStart >= pos ? count : 0));
+            Selection.End = PositionToPlace(oldEnd + (oldEnd >= pos ? count : 0));
+            Selection.EndUpdate();
 
             return range;
         }
@@ -3197,8 +3251,9 @@ namespace FastColoredTextBoxNS
                         cutOff = i;
                     }
                     else
-                        if (!char.IsLetterOrDigit(c) && c != '_' && c != '\'' && c != '\xa0')
-                            cutOff = Math.Min(i + 1, line.Count - 1);
+                    if (!char.IsLetterOrDigit(c) && c != '_' && c != '\'' && c != '\xa0' 
+                        && ((c != '.' && c!= ',') || !char.IsDigit(line[i + 1].c)))//dot before digit
+                        cutOff = Math.Min(i + 1, line.Count - 1);
                 }
 
                 segmentLength++;
@@ -5076,7 +5131,7 @@ namespace FastColoredTextBoxNS
             var caretHeight = CharHeight - lineInterval;
             car.Offset(0, lineInterval / 2);
 
-            if ((Focused || IsDragDrop) && car.X >= LeftIndent && CaretVisible)
+            if ((Focused || IsDragDrop || ShowCaretWhenInactive) && car.X >= LeftIndent && CaretVisible)
             {
                 int carWidth = (IsReplaceMode || WideCaret) ? CharWidth : 1;
                 if (WideCaret)
